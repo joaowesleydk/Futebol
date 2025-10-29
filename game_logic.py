@@ -1,102 +1,114 @@
+from models import Jogador, Adversario
 import random
 import time
-from utils.helpers import rolar_dado, tocar_som
 
+class Partida:
+    """
+    Controla a lógica da partida:
+    - alterna turnos (jogador e adversário)
+    - registra placar
+    - verifica fim de jogo (sem empate)
+    - aumenta dificuldade e energia máxima a cada vitória
+    """
 
-class Batalha:
-    def __init__(self, jogador, adversario):
+    def __init__(self, jogador: Jogador, nivel=1, rodadas_max=5):
         self.jogador = jogador
-        self.adversario = adversario
-        self.turno_atual = "jogador"
+        self.nivel = nivel
+        self.adversario = self.gerar_adversario(nivel)
+        self.rodadas_max = rodadas_max
+        self.rodada_atual = 1
+        self.turno_jogador = True
+        self.mensagem = f"🏁 Nível {nivel}: {self.adversario.nome} entrou em campo!"
+        self.finalizada = False
 
-    # ---------------------------
-    # Execução de um turno
-    # ---------------------------
-    def turno(self, acao_jogador):
-        logs = []
+    def gerar_adversario(self, nivel):
+        """Cria adversários reais com dificuldade progressiva."""
+        lista_adversarios = [
+            ("Gabriel Barbosa", 80, 8, 7, 60),
+            ("Vinícius Jr", 90, 9, 8, 65),
+            ("Rodrygo Goes", 95, 10, 8, 68),
+            ("Mohamed Salah", 100, 11, 9, 72),
+            ("Kylian Mbappé", 105, 12, 9, 75),
+            ("Cristiano Ronaldo", 110, 13, 10, 80),
+            ("Lionel Messi", 115, 14, 10, 85),
+            ("Ronaldinho Gaúcho", 120, 15, 10, 88),
+            ("Zinedine Zidane", 125, 15, 11, 90),
+            ("Diego Maradona", 130, 16, 11, 93),
+            ("Pelé", 140, 17, 12, 97),  # Chefão final
+        ]
 
-        # Jogador age primeiro
-        logs.append(f"{self.jogador.nome} decide {acao_jogador.upper()}!")
+        if nivel > len(lista_adversarios):
+            nivel = len(lista_adversarios)
 
-        if acao_jogador == "chutar":
-            logs.append(self.acao_chutar(self.jogador, self.adversario))
-        elif acao_jogador == "defender":
-            logs.append(self.acao_defender(self.jogador))
-        elif acao_jogador == "boost":
-            logs.append(self.acao_boost(self.jogador))
+        nome, energia, chute, defesa, precisao = lista_adversarios[nivel - 1]
+
+        # Dificuldade aleatória leve (para variar um pouco)
+        energia += random.randint(-5, 10)
+        chute += random.choice([0, 1])
+        defesa += random.choice([0, 1])
+        precisao += random.choice([-3, 3])
+
+        return Adversario(nome, energia, chute, defesa, precisao)
+
+    def turno(self, acao=None):
+        """Executa o turno do jogador ou do adversário."""
+        if self.finalizada:
+            return self.mensagem
+
+        if self.rodada_atual > self.rodadas_max:
+            return self.fim_partida()
+
+        if self.turno_jogador:
+            if acao == "chutar":
+                self.mensagem = self.jogador.chutar(self.adversario)
+            elif acao == "descansar":
+                self.mensagem = self.jogador.descansar()
+            else:
+                self.mensagem = "Ação inválida!"
+            self.turno_jogador = False
         else:
-            logs.append("⚠️ Ação inválida!")
+            self.mensagem = self.adversario.agir(self.jogador)
+            self.turno_jogador = True
+            self.rodada_atual += 1
 
-        # Verifica se o jogo acabou
-        if self.terminou():
-            return "\n".join(logs)
+        return self.mensagem
 
-        time.sleep(1)
+    def placar(self):
+        return f"{self.jogador.nome} {self.jogador.gols} x {self.adversario.gols} {self.adversario.nome}"
 
-        # Adversário joga
-        acao_adv = random.choice(["chutar", "defender", "boost"])
-        logs.append(f"{self.adversario.nome} decide {acao_adv.upper()}!")
+    def energia_restante(self):
+        return f"⚡ {self.jogador.nome}: {self.jogador.energia} | 🤖 {self.adversario.nome}: {self.adversario.energia}"
 
-        if acao_adv == "chutar":
-            logs.append(self.acao_chutar(self.adversario, self.jogador))
-        elif acao_adv == "defender":
-            logs.append(self.acao_defender(self.adversario))
-        elif acao_adv == "boost":
-            logs.append(self.acao_boost(self.adversario))
-
-        return "\n".join(logs)
-
-    # ---------------------------
-    # Ações do jogo
-    # ---------------------------
-    def acao_chutar(self, atacante, defensor):
-        dado = rolar_dado(20)
-        dano_base = 15 + atacante.nivel * 3
-        if dado >= 18:
-            dano = dano_base * 2
-            texto = f"💥 GOLAAAAÇO! {atacante.nome} acerta um chute incrível!"
-            tocar_som("assets/sons/chute_forte.wav", 0.6)
-        elif dado >= 10:
-            dano = dano_base
-            texto = f"⚽ {atacante.nome} acerta o gol com um belo chute!"
-            tocar_som("assets/sons/chute.wav", 0.5)
+    def fim_partida(self):
+        """Determina o vencedor — nunca empata."""
+        if self.jogador.gols > self.adversario.gols:
+            self.finalizada = True
+            # ✅ Recupera energia total e aumenta o máximo
+            self.jogador.energia_max += 10
+            self.jogador.energia = self.jogador.energia_max
+            return f"🏆 Você venceu {self.adversario.nome} por {self.placar()}!\nSua energia máxima aumentou para {self.jogador.energia_max}!"
+        elif self.adversario.gols > self.jogador.gols:
+            self.finalizada = True
+            return f"💀 Você foi derrotado por {self.adversario.nome}! Fim de jogo!"
         else:
-            dano = 0
-            texto = f"😬 {atacante.nome} chutou pra fora!"
-            tocar_som("assets/sons/erro.wav", 0.5)
+            vencedor = self.disputa_penaltis()
+            self.finalizada = True
+            if vencedor == "jogador":
+                self.jogador.energia_max += 10
+                self.jogador.energia = self.jogador.energia_max
+                return f"⚽ Empate no tempo normal!\nNos pênaltis, {self.jogador.nome} venceu {self.adversario.nome}!"
+            else:
+                return f"💔 Empate no tempo normal!\nNos pênaltis, {self.adversario.nome} venceu {self.jogador.nome}!"
 
-        # Defesa pode reduzir dano
-        if defensor.buffs.get("defesa_turns", 0) > 0:
-            dano = int(dano * 0.5)
-            texto += f" 🧤 {defensor.nome} defendeu parte do chute!"
+    def disputa_penaltis(self):
+        """Decide o vencedor por pênaltis (influenciado pela precisão)."""
+        chance_jogador = random.randint(1, 100) + self.jogador.precisao
+        chance_adversario = random.randint(1, 100) + self.adversario.precisao
+        return "jogador" if chance_jogador >= chance_adversario else "adversario"
 
-        defensor.energia = max(0, defensor.energia - dano)
-        atacante.buffs["boost_turns"] = max(0, atacante.buffs.get("boost_turns", 0) - 1)
-        defensor.buffs["defesa_turns"] = max(0, defensor.buffs.get("defesa_turns", 0) - 1)
-
-        return texto
-
-    def acao_defender(self, jogador):
-        jogador.buffs["defesa_turns"] = 2
-        tocar_som("assets/sons/defesa.wav", 0.6)
-        return f"🧤 {jogador.nome} prepara uma defesa sólida!"
-
-    def acao_boost(self, jogador):
-        if jogador.buffs.get("boost_turns", 0) > 0:
-            return f"⚡ {jogador.nome} já está com energia máxima!"
-        jogador.buffs["boost_turns"] = 3
-        tocar_som("assets/sons/boost.wav", 0.6)
-        return f"💨 {jogador.nome} ativa o BOOST! Seus chutes ficam mais fortes!"
-
-    # ---------------------------
-    # Verificações
-    # ---------------------------
-    def terminou(self):
-        return self.jogador.energia <= 0 or self.adversario.energia <= 0
-
-    def vencedor(self):
-        if self.jogador.energia > 0 and self.adversario.energia <= 0:
-            return self.jogador.nome
-        elif self.adversario.energia > 0 and self.jogador.energia <= 0:
-            return self.adversario.nome
+    def proximo_nivel(self):
+        """Cria uma nova partida com nível mais difícil."""
+        if self.finalizada and self.jogador.gols >= self.adversario.gols:
+            self.jogador.gols = 0
+            return Partida(self.jogador, self.nivel + 1)
         return None

@@ -1,245 +1,312 @@
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import messagebox
 import random
-import threading
-
-from models import Jogador, Adversario
-from game_logic import Batalha
-from utils.helpers import tocar_som, tocar_musica_fundo, parar_musica_fundo, anima_bar
+from models import Jogador
+from game_logic import Partida
 
 
 class FIFA_GUI_PLUS:
     def __init__(self, root):
         self.root = root
         self.root.title("⚽ FIFA RPG Cartoon Edition ⚽")
-        self.root.geometry("780x540")
-        self.root.config(bg="#e8f4fa")
-        self.root.resizable(False, False)
+        self.root.geometry("800x600")
+        self.root.configure(bg="#0b132b")
 
-        tocar_musica_fundo("assets/sons/menu.mp3")
-
+        self.partida = None
         self.jogador = None
-        self.adversario = None
-        self.batalha = None
+        self.turno_jogador = True
+        self.itens = {"⚡ Energético": 2, "🔥 Chute Especial": 1, "🛡️ Escudo": 1}
+        self.defendendo = False
+        self.nivel = 1
 
-        self.criar_tela_inicial()
+        self.tela_inicial()
 
-    # -------------------------------
-    # TELA INICIAL
-    # -------------------------------
-    def criar_tela_inicial(self):
-        for w in self.root.winfo_children():
-            w.destroy()
+    # ======== TELA INICIAL ========
+    def tela_inicial(self):
+        for widget in self.root.winfo_children():
+            widget.destroy()
 
-        frame = tk.Frame(self.root, bg="#e8f4fa")
-        frame.pack(expand=True, fill="both")
+        frame = tk.Frame(self.root, bg="#1c2541", bd=4, relief="ridge")
+        frame.place(relx=0.5, rely=0.5, anchor="center", width=500, height=300)
 
-        titulo = tk.Label(
-            frame,
-            text="🏆 FIFA RPG CARTOON 🏆",
-            font=("Comic Sans MS", 28, "bold"),
-            fg="#0055aa",
-            bg="#e8f4fa",
-        )
-        titulo.pack(pady=30)
+        titulo = tk.Label(frame, text="⚽ FIFA RPG Cartoon Edition ⚽",
+                          font=("Comic Sans MS", 20, "bold"),
+                          fg="#f0a500", bg="#1c2541")
+        titulo.pack(pady=20)
 
-        nome_label = tk.Label(frame, text="Digite seu nome:", font=("Comic Sans MS", 16), bg="#e8f4fa")
-        nome_label.pack(pady=10)
+        lbl_nome = tk.Label(frame, text="Digite seu nome:",
+                            font=("Comic Sans MS", 14),
+                            fg="white", bg="#1c2541")
+        lbl_nome.pack(pady=10)
 
-        self.nome_entry = tk.Entry(frame, font=("Comic Sans MS", 16), justify="center")
+        self.nome_entry = tk.Entry(frame, font=("Comic Sans MS", 14), justify="center")
         self.nome_entry.pack(pady=5)
 
-        start_btn = tk.Button(
-            frame,
-            text="COMEÇAR ⚽",
-            font=("Comic Sans MS", 18, "bold"),
-            bg="#009933",
-            fg="white",
-            width=15,
-            command=self.iniciar_jogo,
-        )
-        start_btn.pack(pady=30)
+        btn_iniciar = tk.Button(frame, text="Começar Jogo ⚡",
+                                font=("Comic Sans MS", 14, "bold"),
+                                bg="#f0a500", fg="black",
+                                relief="raised", bd=3,
+                                command=self.iniciar_jogo)
+        btn_iniciar.pack(pady=20)
 
-        creditos = tk.Label(
-            frame,
-            text="by Cristian Studios 💡",
-            font=("Comic Sans MS", 12, "italic"),
-            fg="#555",
-            bg="#e8f4fa",
-        )
-        creditos.pack(side="bottom", pady=10)
+        self.root.bind("<Return>", lambda event: self.iniciar_jogo())
 
-    # -------------------------------
-    # INICIAR JOGO
-    # -------------------------------
+    # ======== INICIAR PARTIDA (modificado) ========
     def iniciar_jogo(self):
         nome = self.nome_entry.get().strip()
         if not nome:
-            messagebox.showwarning("Ops!", "Digite um nome antes de começar.")
+            messagebox.showwarning("Aviso", "Digite seu nome para começar!")
             return
 
-        parar_musica_fundo()
-        tocar_musica_fundo("assets/sons/batalha.mp3")
+        # Cria jogador
+        self.jogador = Jogador(nome, energia=100, chute=10, defesa=8, precisao=70)
+        # Cria partida usando a classe Partida
+        self.partida = Partida(self.jogador, nivel=self.nivel)
+        # Pega adversário da partida
+        self.adversario = self.partida.adversario
+        self.adversario_nome = self.adversario.nome
 
-        self.jogador = Jogador(nome)
-        self.adversario = self.gerar_adversario_inicial()
-        self.batalha = Batalha(self.jogador, self.adversario)
+        # Inicializa HP e energia
+        self.jogador_hp = self.jogador.energia
+        self.jogador_energia = self.jogador.energia
+        self.adversario_hp = self.adversario.energia
+        self.adversario_energia = self.adversario.energia
 
-        self.exibir_batalha()
+        # Define HP máximo para as barras
+        self.hp_max = max(self.jogador_hp, self.adversario_hp)
 
-    # -------------------------------
-    # BATALHA
-    # -------------------------------
-    def exibir_batalha(self):
-        for w in self.root.winfo_children():
-            w.destroy()
+        # Inicia a tela do jogo
+        self.tela_jogo()
 
-        frame = tk.Frame(self.root, bg="#dff5ff")
-        frame.pack(expand=True, fill="both")
+    # ======== TELA DO JOGO ========
+    def tela_jogo(self):
+        for widget in self.root.winfo_children():
+            widget.destroy()
 
-        titulo = tk.Label(
-            frame,
-            text=f"{self.jogador.nome} 🇧🇷 VS {self.adversario.nome}",
-            font=("Comic Sans MS", 22, "bold"),
-            bg="#dff5ff",
-            fg="#004488",
-        )
-        titulo.pack(pady=20)
+        self.frame_jogo = tk.Frame(self.root, bg="#0b132b")
+        self.frame_jogo.pack(fill="both", expand=True)
 
-        # ---- ENERGIA ----
-        self.barra_jogador = ttk.Progressbar(frame, length=250, maximum=100)
-        self.barra_adversario = ttk.Progressbar(frame, length=250, maximum=100)
+        self.lbl_status = tk.Label(self.frame_jogo, text=f"⚔️ Nível {self.nivel} - Partida iniciada!",
+                                   font=("Comic Sans MS", 16, "bold"),
+                                   fg="#f0a500", bg="#0b132b")
+        self.lbl_status.pack(pady=20)
 
-        tk.Label(frame, text=f"{self.jogador.nome}", bg="#dff5ff", font=("Comic Sans MS", 14)).pack()
-        self.barra_jogador.pack(pady=5)
+        # ===== Barras =====
+        self.criar_barras()
 
-        tk.Label(frame, text=f"{self.adversario.nome}", bg="#dff5ff", font=("Comic Sans MS", 14)).pack()
-        self.barra_adversario.pack(pady=5)
+        # ===== Dado =====
+        self.label_dado = tk.Label(self.frame_jogo, text="🎲", font=("Arial", 30),
+                                   bg="#0b132b", fg="white")
+        self.label_dado.pack(pady=20)
 
-        # ---- BOTÕES ----
-        botoes_frame = tk.Frame(frame, bg="#dff5ff")
-        botoes_frame.pack(pady=30)
+        # ===== Botões =====
+        frame_botoes = tk.Frame(self.frame_jogo, bg="#0b132b")
+        frame_botoes.pack(pady=20)
 
-        tk.Button(botoes_frame, text="⚽ Chutar", width=12, font=("Comic Sans MS", 14),
-                  command=lambda: self.jogar_turno("chutar")).grid(row=0, column=0, padx=8)
-        tk.Button(botoes_frame, text="🧤 Defender", width=12, font=("Comic Sans MS", 14),
-                  command=lambda: self.jogar_turno("defender")).grid(row=0, column=1, padx=8)
-        tk.Button(botoes_frame, text="💨 Boost", width=12, font=("Comic Sans MS", 14),
-                  command=lambda: self.jogar_turno("boost")).grid(row=0, column=2, padx=8)
+        self.btn_chutar = tk.Button(frame_botoes, text="⚽ Chutar", font=("Comic Sans MS", 14, "bold"),
+                                    bg="#f0a500", fg="black", width=12,
+                                    command=lambda: self.jogar_turno("chutar"))
+        self.btn_chutar.grid(row=0, column=0, padx=15)
 
-        self.log_text = tk.Text(frame, height=10, width=70, font=("Comic Sans MS", 12))
-        self.log_text.pack(pady=20)
-        self.log_text.insert("end", f"🏁 Começa o jogo entre {self.jogador.nome} e {self.adversario.nome}!\n")
+        self.btn_defender = tk.Button(frame_botoes, text="🛡️ Defender", font=("Comic Sans MS", 14, "bold"),
+                                      bg="#5bc0be", fg="black", width=12,
+                                      command=lambda: self.jogar_turno("defender"))
+        self.btn_defender.grid(row=0, column=1, padx=15)
 
-        self.atualizar_barras()
+        self.btn_item = tk.Button(frame_botoes, text="🎒 Itens", font=("Comic Sans MS", 14, "bold"),
+                                  bg="#f0a500", fg="black", width=12,
+                                  command=self.usar_item)
+        self.btn_item.grid(row=0, column=2, padx=15)
 
-    # -------------------------------
-    # TURNO
-    # -------------------------------
+    # ======== BARRAS ========
+    def criar_barras(self):
+        # Jogador
+        frame_jogador = tk.Frame(self.frame_jogo, bg="#0b132b")
+        frame_jogador.pack(pady=(0, 10))
+
+        self.lbl_hp_jogador = tk.Label(frame_jogador,
+                                       text=f"{self.jogador.nome} ❤️ {self.jogador_hp}/{self.hp_max}",
+                                       font=("Comic Sans MS", 14, "bold"),
+                                       fg="#5bc0be", bg="#0b132b")
+        self.lbl_hp_jogador.pack()
+
+        self.canvas_hp_jogador = tk.Canvas(frame_jogador, width=300, height=20, bg="gray")
+        self.canvas_hp_jogador.pack(pady=3)
+        self.barra_hp_jogador = self.canvas_hp_jogador.create_rectangle(0, 0, 300, 20, fill="#00ff66")
+
+        frame_energia_j = tk.Frame(frame_jogador, bg="#0b132b")
+        frame_energia_j.pack(pady=(0, 10))
+        tk.Label(frame_energia_j, text="⚡", font=("Comic Sans MS", 14, "bold"),
+                 fg="#0099ff", bg="#0b132b").grid(row=0, column=0, padx=5)
+        self.canvas_energy_jogador = tk.Canvas(frame_energia_j, width=240, height=6, bg="gray", highlightthickness=0)
+        self.canvas_energy_jogador.grid(row=0, column=1)
+        self.barra_energy_jogador = self.canvas_energy_jogador.create_rectangle(0, 0, 240, 6, fill="#0099ff")
+
+        # Adversário
+        frame_adv = tk.Frame(self.frame_jogo, bg="#0b132b")
+        frame_adv.pack(pady=(10, 10))
+
+        self.lbl_hp_adversario = tk.Label(frame_adv,
+                                          text=f"{self.adversario_nome} ❤️ {self.adversario_hp}/{self.hp_max}",
+                                          font=("Comic Sans MS", 14, "bold"),
+                                          fg="#ff5f40", bg="#0b132b")
+        self.lbl_hp_adversario.pack()
+
+        self.canvas_hp_adversario = tk.Canvas(frame_adv, width=300, height=20, bg="gray")
+        self.canvas_hp_adversario.pack(pady=3)
+        self.barra_hp_adversario = self.canvas_hp_adversario.create_rectangle(0, 0, 300, 20, fill="#ff4040")
+
+        frame_energia_a = tk.Frame(frame_adv, bg="#0b132b")
+        frame_energia_a.pack(pady=(0, 15))
+        tk.Label(frame_energia_a, text="⚡", font=("Comic Sans MS", 14, "bold"),
+                 fg="#0099ff", bg="#0b132b").grid(row=0, column=0, padx=5)
+        self.canvas_energy_adversario = tk.Canvas(frame_energia_a, width=240, height=6, bg="gray", highlightthickness=0)
+        self.canvas_energy_adversario.grid(row=0, column=1)
+        self.barra_energy_adversario = self.canvas_energy_adversario.create_rectangle(0, 0, 240, 6, fill="#0099ff")
+
+    # ======== ANIMAÇÃO ENERGIA ========
+    def animar_barra_energia(self, canvas, barra, cor="#0099ff"):
+        def brilho():
+            canvas.itemconfig(barra, fill="#66ccff")
+            canvas.after(150, lambda: canvas.itemconfig(barra, fill=cor))
+        brilho()
+
+    # ======== ROLAR DADO ========
+    def rolar_dado(self, callback):
+        resultado_final = random.randint(1, 20)
+        def animar(cont=0):
+            if cont < 15:
+                self.label_dado.config(text=f"🎲 {random.randint(1,20)}")
+                self.root.after(60, animar, cont + 1)
+            else:
+                self.label_dado.config(text=f"🎲 {resultado_final}")
+                callback(resultado_final)
+        animar()
+
+    # ======== AÇÕES DO JOGADOR ========
     def jogar_turno(self, acao):
-        threading.Thread(target=self._turno_thread, args=(acao,), daemon=True).start()
+        if not self.turno_jogador:
+            return
+        self.turno_jogador = False
+        for btn in [self.btn_chutar, self.btn_defender, self.btn_item]:
+            btn.config(state="disabled")
+        self.rolar_dado(lambda dado: self.resolver_jogador(acao, dado))
 
-    def _turno_thread(self, acao):
-        resultado = self.batalha.turno(acao)
-        self.log_text.insert("end", resultado + "\n")
-        self.log_text.see("end")
-
-        self.atualizar_barras()
-        self.root.update_idletasks()
-
-        if self.batalha.terminou():
-            self.final_batalha()
-
-    # -------------------------------
-    # ATUALIZAR INTERFACE
-    # -------------------------------
-    def atualizar_barras(self):
-        anima_bar(self.barra_jogador, self.barra_jogador["value"], self.jogador.energia)
-        anima_bar(self.barra_adversario, self.barra_adversario["value"], self.adversario.energia)
-
-    # -------------------------------
-    # FINAL DE BATALHA
-    # -------------------------------
-        # -------------------------------
-    # FINAL DE BATALHA (ANIMADO)
-    # -------------------------------
-    def final_batalha(self):
-        vencedor = self.batalha.vencedor()
-
-        if vencedor == self.jogador.nome:
-            tocar_som("assets/sons/vitoria.wav", 0.8)
-            self.animacao_vitoria()  # 🌟 chama animação divertida
-            self.jogador.ganhar_xp(50)
-
-            self.root.after(3000, self.proxima_batalha)  # 3 seg de celebração
-
+    def resolver_jogador(self, acao, dado):
+        self.defendendo = False
+        if acao == "chutar":
+            self.jogador_energia = max(0, self.jogador_energia - 10)
+            dano = 0
+            if dado == 20:
+                msg = "🌀 GOL DE BICICLETA! Golpe crítico!"
+                dano = 40
+            elif dado >= 15:
+                msg = "🚀 Chute fortíssimo! Golaço!"
+                dano = 30
+            elif dado >= 10:
+                msg = "⚽ Chute certeiro! Gol normal."
+                dano = 20
+            elif dado >= 5:
+                msg = "🥅 Bateu fraco, o goleiro quase pegou!"
+                dano = 10
+            else:
+                msg = "❌ Errou feio! Chutou pra fora."
+                dano = 0
+            self.adversario_hp = max(self.adversario_hp - dano, 0)
+            self.lbl_status.config(text=f"{msg} (D20: {dado})")
+        elif acao == "defender":
+            self.defendendo = True
+            self.lbl_status.config(text="🛡️ Você se prepara para defender o próximo ataque!")
+        self.atualizar_interface()
+        if self.adversario_hp <= 0:
+            self.encerrar_partida(derrota=False)
         else:
-            tocar_som("assets/sons/derrota.wav", 0.8)
-            self.animacao_derrota()  # 😵 efeito visual para derrota
-            parar_musica_fundo()
-            tocar_musica_fundo("assets/sons/menu.mp3")
+            self.root.after(1500, self.turno_adversario)
 
-            self.root.after(3000, self.criar_tela_inicial)  # volta ao menu
+    # ======== TURNO DO ADVERSÁRIO ========
+    def turno_adversario(self):
+        self.lbl_status.config(text="🤖 O adversário está atacando...")
+        self.rolar_dado(self.resolver_adversario)
+
+    def resolver_adversario(self, dado):
+        dano = 0
+        if dado == 20:
+            msg = "💥 O adversário deu uma bicicleta MONSTRUOSA!"
+            dano = 35
+        elif dado >= 15:
+            msg = "🔥 O adversário chutou no ângulo!"
+            dano = 25
+        elif dado >= 10:
+            msg = "⚽ O adversário marcou um gol normal."
+            dano = 15
+        elif dado >= 5:
+            msg = "😅 A bola desviou e entrou devagarzinho..."
+            dano = 8
+        else:
+            msg = "🙅‍♂️ Você defendeu o chute!"
+            dano = 0
+        if self.defendendo:
+            dano = int(dano * 0.5)
+            msg += " 🛡️ Defesa eficaz!"
+        self.adversario_energia = max(0, self.adversario_energia - 10)
+        self.jogador_hp = max(self.jogador_hp - dano, 0)
+        self.lbl_status.config(text=f"{msg} (D20: {dado})")
+        self.atualizar_interface()
+        if self.jogador_hp <= 0:
+            self.encerrar_partida(derrota=True)
+        else:
+            self.root.after(1500, self.liberar_turno)
+
+    def liberar_turno(self):
+        self.turno_jogador = True
+        for btn in [self.btn_chutar, self.btn_defender, self.btn_item]:
+            btn.config(state="normal")
+        self.lbl_status.config(text="⚽ Sua vez!")
+
+    # ======== ITENS ========
+    def usar_item(self):
+        itens_disponiveis = [f"{k} ({v}x)" for k, v in self.itens.items() if v > 0]
+        if not itens_disponiveis:
+            messagebox.showinfo("🎒 Mochila", "Você não tem itens disponíveis!")
+            return
+        item_nome = random.choice(list(self.itens.keys()))
+        if item_nome == "⚡ Energético":
+            self.jogador_hp = min(self.jogador_hp + 30, self.hp_max)
+            self.lbl_status.config(text="⚡ Você bebeu um energético! +30 HP!")
+        elif item_nome == "🔥 Chute Especial":
+            self.adversario_hp = max(self.adversario_hp - 25, 0)
+            self.lbl_status.config(text="🔥 Chute Especial! -25 HP no adversário!")
+        elif item_nome == "🛡️ Escudo":
+            self.defendendo = True
+            self.lbl_status.config(text="🛡️ Escudo ativado! Próximo ataque reduzido!")
+        self.itens[item_nome] -= 1
+        self.atualizar_interface()
+        self.root.after(1500, self.turno_adversario)
+
+    # ======== ATUALIZAR INTERFACE ========
+    def atualizar_interface(self):
+        self.canvas_hp_jogador.coords(self.barra_hp_jogador, 0, 0, 300 * (self.jogador_hp / self.hp_max), 20)
+        self.canvas_hp_adversario.coords(self.barra_hp_adversario, 0, 0, 300 * (self.adversario_hp / self.hp_max), 20)
+        self.canvas_energy_jogador.coords(self.barra_energy_jogador, 0, 0, 240 * (self.jogador_energia / 100), 6)
+        self.canvas_energy_adversario.coords(self.barra_energy_adversario, 0, 0, 240 * (self.adversario_energia / 100), 6)
+        self.lbl_hp_jogador.config(text=f"{self.jogador.nome} ❤️ {self.jogador_hp}/{self.hp_max}")
+        self.lbl_hp_adversario.config(text=f"{self.adversario_nome} ❤️ {self.adversario_hp}/{self.hp_max}")
+        self.animar_barra_energia(self.canvas_energy_jogador, self.barra_energy_jogador)
+        self.animar_barra_energia(self.canvas_energy_adversario, self.barra_energy_adversario)
+
+    # ======== ENCERRAR PARTIDA ========
+    def encerrar_partida(self, derrota=False):
+        if derrota:
+            messagebox.showinfo("💀", "Você foi derrotado! Tente novamente.")
+            self.nivel = 1
+            self.tela_inicial()
+        else:
+            messagebox.showinfo("🏆", f"Você venceu o nível {self.nivel}! Indo para o próximo!")
+            self.nivel += 1
+            self.iniciar_jogo()
 
 
-        # -------------------------------
-    # ANIMAÇÕES DE VITÓRIA E DERROTA
-    # -------------------------------
-    def animacao_vitoria(self):
-        """Faz a tela piscar e mostra texto de comemoração."""
-        from utils.helpers import piscar_widget
-        frame = tk.Frame(self.root, bg="#00ff88")
-        frame.place(relx=0, rely=0, relwidth=1, relheight=1)
-
-        titulo = tk.Label(
-            frame,
-            text="🏆 VITÓÓÓRIA!!! 🏆",
-            font=("Comic Sans MS", 34, "bold"),
-            bg="#00ff88",
-            fg="#003300",
-        )
-        titulo.place(relx=0.5, rely=0.5, anchor="center")
-
-        # pisca o fundo com verde vibrante
-        piscar_widget(frame, "#00ff88", "#66ffcc", vezes=6, intervalo=0.2)
-
-        def limpar():
-            frame.destroy()
-        self.root.after(2800, limpar)
-
-    def animacao_derrota(self):
-        """Tela pisca vermelho quando o jogador perde."""
-        from utils.helpers import piscar_widget
-        frame = tk.Frame(self.root, bg="#ff5555")
-        frame.place(relx=0, rely=0, relwidth=1, relheight=1)
-
-        titulo = tk.Label(
-            frame,
-            text="💀 DERROTA... 💀",
-            font=("Comic Sans MS", 32, "bold"),
-            bg="#ff5555",
-            fg="#330000",
-        )
-        titulo.place(relx=0.5, rely=0.5, anchor="center")
-
-        # pisca vermelho intenso
-        piscar_widget(frame, "#ff5555", "#ff9999", vezes=6, intervalo=0.2)
-
-        def limpar():
-            frame.destroy()
-        self.root.after(2800, limpar)
-
-    # -------------------------------
-    # PRÓXIMA FASE / ADVERSÁRIO
-    # -------------------------------
-    def proxima_batalha(self):
-        nomes = ["Alemanha", "França", "Espanha", "Portugal", "Senegal", "Japão", "Croácia", "Dinamarca"]
-        novo_nome = random.choice(nomes)
-        self.adversario = Adversario(novo_nome, random.randint(2, 6))
-        self.jogador.energia = self.jogador.energia_max
-        self.batalha = Batalha(self.jogador, self.adversario)
-        self.exibir_batalha()
-
-    def gerar_adversario_inicial(self):
-        times = ["Argentina", "Itália", "Inglaterra", "Holanda"]
-        return Adversario(random.choice(times), nivel=random.randint(1, 3))
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = FIFA_GUI_PLUS(root)
+    root.mainloop()
