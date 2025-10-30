@@ -5,7 +5,7 @@ from gui import FIFA_GUI_PLUS  # importa a interface principal
 class FIFA_RPG:
     def __init__(self, root):
         self.root = root
-        self.root.title("⚽ Liga Lendária Cartoon Edition ⚽")
+        self.root.title("⚽Batalha das Lendas RPG⚽")
         self.root.geometry("800x600")
         self.root.resizable(False, False)
         self.root.configure(bg="#0b132b")
@@ -20,7 +20,7 @@ class FIFA_RPG:
         # ====== Título ======
         titulo = tk.Label(
             frame,
-            text="Liga Lendária Cartoon Edition",
+            text="⚽Batalha das Lendas RPG⚽",
             font=("Comic Sans MS", 22, "bold"),
             fg="#f0a500",
             bg="#1c2541"
@@ -31,7 +31,7 @@ class FIFA_RPG:
         info = tk.Label(
             frame,
             text=(
-                "Bem-vindo à Liga Lendária!\n"
+                "Bem-vindo à Batalha das Lendas!\n"
                 "Enfrente craques lendários, role o dado\n"
                 "e prove que é o maior do futebol RPG!"
             ),
