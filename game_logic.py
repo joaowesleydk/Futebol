@@ -56,14 +56,9 @@ class Partida:
         """Cria adversários reais com dificuldade progressiva."""
         lista_adversarios = [
             ("Gabi Gol", 80, 8, 7, 60),
-            ("Kaio Jorge", 90, 9, 8, 65),
-            ("Rodrygo Goes", 95, 10, 8, 68),
-            ("Mohamed Salah", 100, 11, 9, 72),
-            ("Vinícius Jr", 105, 12, 9, 75),
             ("Cristiano Ronaldo", 110, 13, 10, 80),
             ("Lionel Messi", 115, 14, 10, 85),
             ("Ronaldinho Gaúcho", 120, 15, 10, 88),
-            ("Zinedine Zidane", 125, 15, 11, 90),
             ("Diego Maradona", 130, 16, 11, 93),
             ("Pelé", 140, 17, 12, 97),
         ]
