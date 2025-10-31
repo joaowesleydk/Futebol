@@ -12,6 +12,7 @@ class FIFA_GUI_PLUS:
         self.root.geometry("800x600")
         self.root.configure(bg="#0b132b")
 
+        # estado do jogo
         self.partida = None
         self.jogador = None
         self.turno_jogador = True
@@ -19,7 +20,51 @@ class FIFA_GUI_PLUS:
         self.defendendo = False
         self.nivel = 1
 
+        # cria a tela inicial (ela chamará create_fullscreen_controls)
         self.tela_inicial()
+
+    # ======== Helpers de fullscreen ========
+    def create_fullscreen_controls(self):
+        """
+        Garante que o window (self.root) esteja em fullscreen inicialmente
+        e cria o botão ESC / 'Sair da Tela Cheia'. Deve ser chamado após
+        cada limpeza de widgets da root, para que o botão seja recriado.
+        """
+        # remove botão anterior se existir
+        try:
+            if hasattr(self, "btn_sair_full") and self.btn_sair_full.winfo_exists():
+                self.btn_sair_full.destroy()
+        except Exception:
+            pass
+
+        # tenta ativar fullscreen (se suportado)
+        try:
+            self.root.attributes("-fullscreen", True)
+        except Exception:
+            pass
+
+        # bind ESC para sair do fullscreen
+        try:
+            self.root.bind("<Escape>", lambda e: self.root.attributes("-fullscreen", False))
+        except Exception:
+            pass
+
+        # cria o botão no canto superior direito da root
+        try:
+            self.btn_sair_full = tk.Button(
+                self.root,
+                text="⤫ Sair da Tela Cheia",
+                font=("Comic Sans MS", 12, "bold"),
+                bg="#e63946",
+                fg="white",
+                relief="raised",
+                bd=3,
+                command=lambda: self.root.attributes("-fullscreen", False)
+            )
+            # coloca por cima de tudo — será recriado por cada tela
+            self.btn_sair_full.place(relx=0.98, rely=0.02, anchor="ne")
+        except Exception:
+            pass
 
     # ======== TELA INICIAL ========
     def tela_inicial(self):
@@ -50,6 +95,9 @@ class FIFA_GUI_PLUS:
         btn_iniciar.pack(pady=20)
 
         self.root.bind("<Return>", lambda event: self.iniciar_jogo())
+
+        # importante: recria controles de fullscreen (botão + bind)
+        self.create_fullscreen_controls()
 
     # ======== INICIAR PARTIDA ========
     def iniciar_jogo(self):
@@ -116,6 +164,19 @@ class FIFA_GUI_PLUS:
         self.frame_jogo = tk.Frame(self.root, bg="#0b132b")
         self.frame_jogo.pack(fill="both", expand=True)
 
+        # Botão de sair (fecha completamente o jogo)
+        btn_sair = tk.Button(
+            self.frame_jogo,
+            text="🚪 Sair do Jogo",
+            font=("Comic Sans MS", 12, "bold"),
+            bg="#e63946",
+            fg="white",
+            relief="raised",
+            bd=3,
+            command=self.root.destroy
+        )
+        btn_sair.place(relx=0.98, rely=0.02, anchor="ne")
+
         self.lbl_status = tk.Label(self.frame_jogo, text=f"⚔️ Nível {self.nivel} - Partida iniciada!",
                                    font=("Comic Sans MS", 16, "bold"),
                                    fg="#f0a500", bg="#0b132b")
@@ -147,6 +208,9 @@ class FIFA_GUI_PLUS:
 
         self.lbl_status.config(text=f"⚽ Sua vez! Enfrente {self.adversario_nome}.")
         self.atualizar_interface()
+
+        # importante: recria controles de fullscreen (botão + bind) após montar tela_jogo
+        self.create_fullscreen_controls()
 
     # ======== BARRAS ========
     def criar_barras(self):
@@ -192,16 +256,13 @@ class FIFA_GUI_PLUS:
         self.canvas_energy_adversario.grid(row=0, column=1)
         self.barra_energy_adversario = self.canvas_energy_adversario.create_rectangle(0, 0, 240, 6, fill="#0099ff")
 
-    # ======== (restante do código continua idêntico) ========
-
-
+    # ======== (restante do código – ações, rolagem, lógica, vitória etc.) ========
     def animar_barra_energia(self, canvas, barra, cor="#0099ff"):
         def brilho():
             canvas.itemconfig(barra, fill="#66ccff")
             canvas.after(150, lambda: canvas.itemconfig(barra, fill=cor))
         brilho()
 
-    # ======== DADO ========
     def rolar_dado(self, callback):
         resultado_final = random.randint(1, 20)
         def animar(cont=0):
@@ -213,7 +274,6 @@ class FIFA_GUI_PLUS:
                 callback(resultado_final)
         animar()
 
-    # ======== AÇÕES ========
     def jogar_turno(self, acao):
         if not self.turno_jogador:
             return
@@ -376,6 +436,9 @@ class FIFA_GUI_PLUS:
                 self.iniciar_proximo_nivel()
 
         piscar()
+
+        # recria controles de fullscreen também aqui após limpar tudo
+        self.create_fullscreen_controls()
 
 
 if __name__ == "__main__":
