@@ -2,39 +2,56 @@ import tkinter as tk
 from tkinter import messagebox
 import traceback
 from gui import FIFA_GUI_PLUS  # importa a interface principal
+from utils.helpers import tocar_musica_fundo, parar_musica_fundo, narrar_texto
+
 
 
 class FIFA_RPG:
     def __init__(self, root):
         self.root = root
         self.root.title("⚽Batalha das Lendas RPG⚽")
-        self.root.attributes("-fullscreen", True)  # ✅ fullscreen inicial
+        self.root.attributes("-fullscreen", True)
         self.root.configure(bg="#0b132b")
 
-        # permite sair do fullscreen com ESC
         self.root.bind("<Escape>", self.sair_tela_cheia)
 
-        # Começa mostrando a primeira história
+        # container principal (reaproveitado)
+        self.container = tk.Frame(self.root, bg="#1c2541")
+        self.container.pack(fill="both", expand=True)
+        
+        tocar_musica_fundo("tema_main.mp3", volume=0.6)
+
+        # inicia com a primeira história
         self.mostrar_primeira_historia()
 
-    # ====== FUNÇÃO PARA SAIR DO FULLSCREEN ======
+    # ====== FUNÇÕES DE FULLSCREEN ======
     def sair_tela_cheia(self, event=None):
-        """Sai do modo tela cheia."""
         self.root.attributes("-fullscreen", False)
 
     def voltar_fullscreen(self, event=None):
-        """Retorna ao modo tela cheia."""
         self.root.attributes("-fullscreen", True)
+
+    def limpar_tela(self):
+        """Remove todos os widgets do container, sem destruir a janela."""
+        for widget in self.container.winfo_children():
+            widget.destroy()
+
+    def adicionar_botao_sair_full(self):
+        """Botão no canto superior direito para sair do fullscreen."""
+        btn_sair_full = tk.Button(
+            self.container,
+            text="⤫ Sair da Tela Cheia",
+            font=("Comic Sans MS", 12, "bold"),
+            bg="#e63946",
+            fg="white",
+            command=lambda: self.root.attributes("-fullscreen", False)
+        )
+        btn_sair_full.place(relx=0.98, rely=0.02, anchor="ne")
 
     # ====== PRIMEIRA HISTÓRIA ======
     def mostrar_primeira_historia(self):
-        self.janela1 = tk.Toplevel(self.root)
-        self.janela1.title("🏆 A Honra Perdida 🏆")
-        self.janela1.attributes("-fullscreen", True)
-        self.janela1.configure(bg="#1c2541")
-
-        # ESC também sai do fullscreen
-        self.janela1.bind("<Escape>", lambda e: self.janela1.attributes("-fullscreen", False))
+        self.limpar_tela()
+        self.container.configure(bg="#1c2541")
 
         historia1 = (
             "Há muito tempo, o futebol era mais que um esporte — era a alma de uma nação.\n"
@@ -44,9 +61,11 @@ class FIFA_RPG:
             "O espírito do jogo, outrora brilhante e puro, caiu na escuridão.\n\n"
             "Agora, somente um jogador escolhido pode restaurar a glória e trazer de volta os dias de ouro!"
         )
+        
+        narrar_texto(historia1)
 
-        texto1 = tk.Label(
-            self.janela1,
+        texto = tk.Label(
+            self.container,
             text=historia1,
             font=("Comic Sans MS", 18),
             fg="white",
@@ -54,10 +73,10 @@ class FIFA_RPG:
             justify="center",
             wraplength=1000
         )
-        texto1.pack(expand=True)
+        texto.pack(expand=True)
 
-        btn_continuar1 = tk.Button(
-            self.janela1,
+        btn_continuar = tk.Button(
+            self.container,
             text="➡️ Continuar",
             font=("Comic Sans MS", 18, "bold"),
             bg="#f0a500",
@@ -67,31 +86,14 @@ class FIFA_RPG:
             width=18,
             command=self.mostrar_segunda_historia
         )
-        btn_continuar1.pack(pady=40)
+        btn_continuar.pack(pady=40)
 
-        # botão sair fullscreen
-        btn_sair_full = tk.Button(
-            self.janela1,
-            text="⤫ Sair da Tela Cheia",
-            font=("Comic Sans MS", 12, "bold"),
-            bg="#e63946",
-            fg="white",
-            command=lambda: self.janela1.attributes("-fullscreen", False)
-        )
-        btn_sair_full.place(relx=0.98, rely=0.02, anchor="ne")
+        self.adicionar_botao_sair_full()
 
     # ====== SEGUNDA HISTÓRIA ======
     def mostrar_segunda_historia(self):
-        try:
-            self.janela1.destroy()
-        except Exception:
-            pass
-
-        self.janela2 = tk.Toplevel(self.root)
-        self.janela2.title("🏆 A Lenda Começa 🏆")
-        self.janela2.attributes("-fullscreen", True)
-        self.janela2.configure(bg="#1c2541")
-        self.janela2.bind("<Escape>", lambda e: self.janela2.attributes("-fullscreen", False))
+        self.limpar_tela()
+        self.container.configure(bg="#1c2541")
 
         historia2 = (
             "Em um mundo onde o futebol ultrapassa os limites do campo,\n"
@@ -102,9 +104,11 @@ class FIFA_RPG:
             "e conquistar a taça das lendas.\n\n"
             "Treine, lute e prove que é digno do título de Campeão Supremo!"
         )
+        
+        narrar_texto(historia2)
 
-        texto2 = tk.Label(
-            self.janela2,
+        texto = tk.Label(
+            self.container,
             text=historia2,
             font=("Comic Sans MS", 18),
             fg="white",
@@ -112,10 +116,10 @@ class FIFA_RPG:
             justify="center",
             wraplength=1000
         )
-        texto2.pack(expand=True)
+        texto.pack(expand=True)
 
-        btn_continuar2 = tk.Button(
-            self.janela2,
+        btn_continuar = tk.Button(
+            self.container,
             text="➡️ Continuar",
             font=("Comic Sans MS", 18, "bold"),
             bg="#f0a500",
@@ -125,34 +129,16 @@ class FIFA_RPG:
             width=18,
             command=self.mostrar_tela_inicial
         )
-        btn_continuar2.pack(pady=40)
+        btn_continuar.pack(pady=40)
 
-        btn_sair_full = tk.Button(
-            self.janela2,
-            text="⤫ Sair da Tela Cheia",
-            font=("Comic Sans MS", 12, "bold"),
-            bg="#e63946",
-            fg="white",
-            command=lambda: self.janela2.attributes("-fullscreen", False)
-        )
-        btn_sair_full.place(relx=0.98, rely=0.02, anchor="ne")
+        self.adicionar_botao_sair_full()
 
     # ====== TELA INICIAL ======
     def mostrar_tela_inicial(self):
-        try:
-            self.janela2.destroy()
-        except Exception:
-            pass
-        self.criar_tela_inicial()
+        self.limpar_tela()
+        self.container.configure(bg="#1c2541")
 
-    def criar_tela_inicial(self):
-        self.root.deiconify()
-        self.root.attributes("-fullscreen", True)
-
-        for widget in self.root.winfo_children():
-            widget.destroy()
-
-        frame = tk.Frame(self.root, bg="#1c2541", bd=6, relief="ridge")
+        frame = tk.Frame(self.container, bg="#1c2541", bd=6, relief="ridge")
         frame.place(relx=0.5, rely=0.5, anchor="center", width=800, height=500)
 
         titulo = tk.Label(
@@ -187,7 +173,6 @@ class FIFA_RPG:
             relief="raised",
             bd=4,
             width=20,
-            height=1,
             command=self.iniciar_jogo
         )
         btn_jogar.pack(pady=40)
@@ -201,16 +186,7 @@ class FIFA_RPG:
         )
         footer.pack(side="bottom", pady=10)
 
-        # botão sair fullscreen
-        btn_sair_full = tk.Button(
-            self.root,
-            text="⤫ Sair da Tela Cheia",
-            font=("Comic Sans MS", 12, "bold"),
-            bg="#e63946",
-            fg="white",
-            command=lambda: self.root.attributes("-fullscreen", False)
-        )
-        btn_sair_full.place(relx=0.98, rely=0.02, anchor="ne")
+        self.adicionar_botao_sair_full()
 
     # ====== INICIAR JOGO ======
     def iniciar_jogo(self):
@@ -223,9 +199,6 @@ class FIFA_RPG:
         toplevel.title("⚽ Batalha das Lendas - Modo Jogo ⚽")
         toplevel.attributes("-fullscreen", True)
         toplevel.configure(bg="#0b132b")
-
-        # ESC sai do fullscreen
-        toplevel.bind("<Escape>", lambda e: toplevel.attributes("-fullscreen", False))
 
         # botão sair fullscreen
         btn_sair_full = tk.Button(
@@ -259,6 +232,5 @@ class FIFA_RPG:
 # ====== Ponto de entrada ======
 if __name__ == "__main__":
     root = tk.Tk()
-    root.withdraw()
     app = FIFA_RPG(root)
     root.mainloop()

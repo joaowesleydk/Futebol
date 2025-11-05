@@ -3,12 +3,12 @@ from tkinter import messagebox
 import random
 from models import Jogador
 from game_logic import Partida
-
+from utils.helpers import tocar_som, tocar_musica_fundo, parar_musica_fundo  # ✅ importa os sons
 
 class FIFA_GUI_PLUS:
     def __init__(self, root):
         self.root = root
-        self.root.title("⚽ Liga Lendária RPG Cartoon Edition ⚽")
+        self.root.title("⚽ Batalha das Lendas RPG ⚽")
         self.root.geometry("800x600")
         self.root.configure(bg="#0b132b")
 
@@ -74,7 +74,7 @@ class FIFA_GUI_PLUS:
         frame = tk.Frame(self.root, bg="#1c2541", bd=4, relief="ridge")
         frame.place(relx=0.5, rely=0.5, anchor="center", width=500, height=300)
 
-        titulo = tk.Label(frame, text="⚽ Liga Lendária RPG Cartoon Edition  ⚽",
+        titulo = tk.Label(frame, text="⚽ Batalha das Lendas RPG ⚽",
                           font=("Comic Sans MS", 20, "bold"),
                           fg="#f0a500", bg="#1c2541")
         titulo.pack(pady=20)
@@ -98,9 +98,12 @@ class FIFA_GUI_PLUS:
 
         # importante: recria controles de fullscreen (botão + bind)
         self.create_fullscreen_controls()
+        tocar_musica_fundo("tema_batalha.mp3")
+
 
     # ======== INICIAR PARTIDA ========
     def iniciar_jogo(self):
+        tocar_som("click.mp3")
         nome = self.nome_entry.get().strip()
         if not nome:
             messagebox.showwarning("Aviso", "Digite seu nome para começar!")
@@ -202,8 +205,9 @@ class FIFA_GUI_PLUS:
         self.btn_defender.grid(row=0, column=1, padx=15)
 
         self.btn_item = tk.Button(frame_botoes, text="🎒 Itens", font=("Comic Sans MS", 14, "bold"),
-                                  bg="#f0a500", fg="black", width=12,
-                                  command=self.usar_item)
+                          bg="#f0a500", fg="black", width=12,
+                          command=self.abrir_inventario)
+
         self.btn_item.grid(row=0, column=2, padx=15)
 
         self.lbl_status.config(text=f"⚽ Sua vez! Enfrente {self.adversario_nome}.")
@@ -211,6 +215,110 @@ class FIFA_GUI_PLUS:
 
         # importante: recria controles de fullscreen (botão + bind) após montar tela_jogo
         self.create_fullscreen_controls()
+        
+        
+    def abrir_inventario(self):
+        inv = tk.Toplevel(self.root)
+        inv.title("🎒 Mochila")
+        inv.configure(bg="#1c2541")
+        inv.geometry("420x360")
+        inv.resizable(False, False)
+        inv.grab_set()
+
+        tk.Label(inv, text="🎒 Seus Itens", font=("Comic Sans MS", 18, "bold"),
+                 fg="#f0a500", bg="#1c2541").pack(pady=10)
+
+        frame_itens = tk.Frame(inv, bg="#1c2541")
+        frame_itens.pack(pady=10)
+
+        if all(qtd == 0 for qtd in self.itens.values()):
+            tk.Label(frame_itens, text="(vazio)", font=("Comic Sans MS", 14),
+                     fg="white", bg="#1c2541").pack(pady=20)
+        else:
+            cores = {
+                "⚡ Energético": "#ffcc00",
+                "🔥 Chute Especial": "#ff5733",
+                "🛡️ Escudo": "#5bc0be"
+            }
+            for item_nome, qtd in self.itens.items():
+                if qtd > 0:
+                    linha = tk.Frame(frame_itens, bg="#1c2541")
+                    linha.pack(pady=5)
+
+                    cor = cores.get(item_nome, "white")
+                    tk.Label(linha, text=f"{item_nome}  x{qtd}",
+                             font=("Comic Sans MS", 14),
+                             fg=cor, bg="#1c2541").pack(side="left", padx=10)
+
+                    tk.Button(linha, text="Usar", font=("Comic Sans MS", 12, "bold"),
+                              bg=cor, fg="black", width=6,
+                              command=lambda nome=item_nome, win=inv: self.usar_item(nome, win)
+                              ).pack(side="right", padx=10)
+
+        tk.Button(inv, text="Fechar", font=("Comic Sans MS", 12, "bold"),
+                  bg="#e63946", fg="white", width=10,
+                  command=inv.destroy).pack(pady=20)
+
+    def usar_item(self, item_nome, janela_inv=None):
+        tocar_som("item.mp3")
+        if self.itens.get(item_nome, 0) <= 0:
+            messagebox.showinfo("🎒 Mochila", f"Você não tem mais {item_nome}!")
+            return
+
+        if item_nome == "⚡ Energético":
+            self.jogador_hp = min(self.jogador_hp + 30, self.jogador_hp_max)
+            self.lbl_status.config(text="⚡ Você bebeu um energético! +30 HP!")
+        elif item_nome == "🔥 Chute Especial":
+            self.adversario_hp = max(self.adversario_hp - 25, 0)
+            self.lbl_status.config(text="🔥 Chute Especial! -25 HP no adversário!")
+            if self.verificar_vitoria():
+                return
+        elif item_nome == "🛡️ Escudo":
+            self.defendendo = True
+            self.lbl_status.config(text="🛡️ Escudo ativado! Próximo ataque reduzido!")
+
+        self.itens[item_nome] -= 1
+        self.atualizar_interface()
+
+        if janela_inv:
+            janela_inv.destroy()
+
+        self.root.after(1500, self.turno_adversario)
+        
+        
+    def sortear_drop(self):
+        chance_drop = random.random()
+        if chance_drop <= 0.6:  # 60% de chance de dropar algo
+            raridade = random.random()
+            if raridade <= 0.7:
+                item, tipo, cor = "⚡ Energético", "comum", "#ffcc00"
+            elif raridade <= 0.95:
+                item, tipo, cor = "🔥 Chute Especial", "raro", "#ff5733"
+            else:
+                item, tipo, cor = "💎 Escudo Divino", "lendário", "#5bc0be"
+
+            self.itens[item] = self.itens.get(item, 0) + 1
+
+            drop = tk.Toplevel(self.root)
+            drop.configure(bg="#0b132b")
+            drop.geometry("500x300")
+            drop.title("🎁 Recompensa!")
+
+            tk.Label(drop, text="🎉 Você ganhou um item!", font=("Comic Sans MS", 20, "bold"),
+                     fg="#f0a500", bg="#0b132b").pack(pady=20)
+
+            tk.Label(drop, text=f"{item}", font=("Comic Sans MS", 40, "bold"),
+                     fg=cor, bg="#0b132b").pack(pady=20)
+
+            tk.Label(drop, text=f"Item {tipo.upper()} encontrado!", font=("Comic Sans MS", 16),
+                     fg="white", bg="#0b132b").pack(pady=10)
+
+            tk.Button(drop, text="Continuar ⭐", font=("Comic Sans MS", 14, "bold"),
+                      bg="#f0a500", fg="black", width=12,
+                      command=lambda: [drop.destroy(), self.animar_subida_nivel()]).pack(pady=20)
+        else:
+            messagebox.showinfo("🎁 Recompensa!", "Nenhum item foi encontrado desta vez...")
+            self.animar_subida_nivel()
 
     # ======== BARRAS ========
     def criar_barras(self):
@@ -357,28 +465,6 @@ class FIFA_GUI_PLUS:
             btn.config(state="normal")
         self.lbl_status.config(text="⚽ Sua vez!")
 
-    def usar_item(self):
-        itens_disponiveis = [k for k, v in self.itens.items() if v > 0]
-        if not itens_disponiveis:
-            messagebox.showinfo("🎒 Mochila", "Você não tem itens disponíveis!")
-            return
-        item_nome = random.choice(itens_disponiveis)
-        if item_nome == "⚡ Energético":
-            self.jogador_hp = min(self.jogador_hp + 30, self.jogador_hp_max)
-            self.lbl_status.config(text="⚡ Você bebeu um energético! +30 HP!")
-        elif item_nome == "🔥 Chute Especial":
-            self.adversario_hp = max(self.adversario_hp - 25, 0)
-            self.lbl_status.config(text="🔥 Chute Especial! -25 HP no adversário!")
-            if self.verificar_vitoria():
-                return
-        elif item_nome == "🛡️ Escudo":
-            self.defendendo = True
-            self.lbl_status.config(text="🛡️ Escudo ativado! Próximo ataque reduzido!")
-
-        self.itens[item_nome] -= 1
-        self.atualizar_interface()
-        self.root.after(1500, self.turno_adversario)
-
     # ======== VITÓRIA / DERROTA ========
     def verificar_vitoria(self):
         if self.adversario_hp <= 0:
@@ -412,7 +498,8 @@ class FIFA_GUI_PLUS:
             self.nivel = 1
             self.tela_inicial()
         else:
-            self.animar_subida_nivel()
+             self.sortear_drop()
+
 
     # ======== ANIMAÇÃO DE SUBIDA DE NÍVEL ========
     def animar_subida_nivel(self):
