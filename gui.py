@@ -4,6 +4,10 @@ import random
 from models import Jogador
 from game_logic import Partida
 from utils.helpers import tocar_som, tocar_musica_fundo, parar_musica_fundo  # ✅ importa os sons
+from PIL import Image, ImageTk
+import os
+
+
 
 class FIFA_GUI_PLUS:
     def __init__(self, root):
@@ -212,6 +216,12 @@ class FIFA_GUI_PLUS:
 
         self.lbl_status.config(text=f"⚽ Sua vez! Enfrente {self.adversario_nome}.")
         self.atualizar_interface()
+        
+        
+                    # =======================
+        # 🏟️ CENA DO CAMPO
+        # =======================
+               
 
         # importante: recria controles de fullscreen (botão + bind) após montar tela_jogo
         self.create_fullscreen_controls()
@@ -271,6 +281,7 @@ class FIFA_GUI_PLUS:
         elif item_nome == "🔥 Chute Especial":
             self.adversario_hp = max(self.adversario_hp - 25, 0)
             self.lbl_status.config(text="🔥 Chute Especial! -25 HP no adversário!")
+              
             if self.verificar_vitoria():
                 return
         elif item_nome == "🛡️ Escudo":
@@ -392,14 +403,16 @@ class FIFA_GUI_PLUS:
 
     def resolver_jogador(self, acao, dado):
         self.defendendo = False
+
         if acao == "chutar":
             self.jogador_energia = max(0, self.jogador_energia - 10)
             dano = 0
+
             if dado == 20:
                 msg = "🌀 GOL DE BICICLETA! Golpe crítico!"
                 dano = 40
             elif dado >= 15:
-                msg = "🚀 Chute fortíssimo! Golaço!"
+                msg = "🚀 Chute no Ângulo! Golaço!"
                 dano = 30
             elif dado >= 10:
                 msg = "⚽ Chute certeiro! Gol normal."
@@ -414,15 +427,32 @@ class FIFA_GUI_PLUS:
             self.adversario_hp = max(self.adversario_hp - dano, 0)
             self.lbl_status.config(text=f"{msg} (D20: {dado})")
 
-            if self.verificar_vitoria():
-                return
+            # ==============================
+            # ⚽ ANIMAÇÃO DO CHUTE
+            # ==============================
+            acertou = dano > 0  # se causou dano, consideramos que acertou o gol
+
+            # desativa os botões durante a animação
+            for btn in [self.btn_chutar, self.btn_defender, self.btn_item]:
+                btn.config(state="disabled")
+
+            # callback após a animação
+            def apos_animacao():
+                self.atualizar_interface()
+                if not self.verificar_vitoria():
+                    self.root.after(500, self.turno_adversario)
+                # reativa os botões
+                for btn in [self.btn_chutar, self.btn_defender, self.btn_item]:
+                    btn.config(state="normal")
+
+            # chama a animação com callback
+            self.animar_chute_com_callback(acertou, apos_animacao)
 
         elif acao == "defender":
             self.defendendo = True
             self.lbl_status.config(text="🛡️ Você se prepara para defender o próximo ataque!")
+            self.root.after(1500, self.turno_adversario)
 
-        self.atualizar_interface()
-        self.root.after(1500, self.turno_adversario)
 
     def turno_adversario(self):
         self.lbl_status.config(text="🤖 O adversário está atacando...")
@@ -526,6 +556,92 @@ class FIFA_GUI_PLUS:
 
         # recria controles de fullscreen também aqui após limpar tudo
         self.create_fullscreen_controls()
+        
+        
+        # ======== FUNÇÃO DE ANIMAÇÃO (ADICIONE ANTES DO if __name__ == "__main__") ========
+
+
+def animar_acao_tk(container, pasta, duracao=2000, intervalo=150, som=None):
+    """
+    Mostra animação simples (sequência de imagens) na parte inferior da tela, sobre o gol.
+    - pasta: caminho da pasta com os frames (frame1.png, frame2.png, ...)
+    - som: arquivo de som opcional
+    """
+    try:
+        frames = []
+        for nome in sorted(os.listdir(pasta)):
+            if nome.endswith(".png"):
+                caminho = os.path.join(pasta, nome)
+                img = Image.open(caminho).resize((280, 280))
+                frames.append(ImageTk.PhotoImage(img))
+
+        if not frames:
+            print(f"[AVISO] Nenhum frame encontrado em {pasta}")
+            return
+
+        # Toca som (opcional)
+        if som:
+            try:
+                from utils.helpers import tocar_som
+                tocar_som(som)
+            except Exception as e:
+                print(f"[ERRO ao tocar som]: {e}")
+
+        # label da animação — posição ajustada para ficar acima do gol fixo
+        label_anim = tk.Label(container, bg="#0b132b")
+        label_anim.place(relx=0.5, rely=0.72, anchor="center")
+
+        def atualizar(ind=0):
+            if ind < len(frames):
+                label_anim.configure(image=frames[ind])
+                container.after(intervalo, lambda: atualizar(ind + 1))
+            else:
+                label_anim.destroy()
+
+        atualizar()
+    except Exception as e:
+        print(f"[ERRO na animação]: {e}")
+        
+        
+def animar_chute_simples(container, acertou=True):
+    """
+    Anima a bola saindo do jogador e indo até o gol.
+    """
+    try:
+        from utils.helpers import tocar_som
+        caminho_bola = os.path.join("assets", "imagens", "bola.png")
+        if not os.path.exists(caminho_bola):
+            print("[AVISO] bola.png não encontrada")
+            return
+
+        bola_img = Image.open(caminho_bola).resize((40, 40))
+        bola_tk = ImageTk.PhotoImage(bola_img)
+        label_bola = tk.Label(container, image=bola_tk, bg="#0b132b")
+        label_bola.image = bola_tk
+        label_bola.place(relx=0.33, rely=0.78, anchor="center")  # perto do pé do jogador
+
+        tocar_som("chute.mp3")
+
+        # Movimento da bola
+        def mover_bola(x=0.33, y=0.78):
+            if x < 0.70:
+                x += 0.025
+                if not acertou:
+                    y -= 0.01
+                label_bola.place(relx=x, rely=y, anchor="center")
+                container.after(30, lambda: mover_bola(x, y))
+            else:
+                label_bola.destroy()
+                if acertou:
+                    tocar_som("chute_gol.mp3")
+                else:
+                    tocar_som("erro.mp3")
+
+        mover_bola()
+
+    except Exception as e:
+        print(f"[ERRO na animação de chute]: {e}")
+        
 
 
 if __name__ == "__main__":

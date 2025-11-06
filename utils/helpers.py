@@ -4,10 +4,14 @@ import requests
 import threading
 
 # ==============================
-# 🎧 INICIALIZAÇÃO DO SISTEMA DE SOM
+# 🎧 CONFIGURAÇÃO E INICIALIZAÇÃO DO MIXER
 # ==============================
+
 try:
-    pygame.mixer.init()
+    # Preconfiguração com buffer e frequência otimizados
+    pygame.mixer.pre_init(44100, -16, 2, 512)
+    pygame.init()
+    pygame.mixer.set_num_channels(16)  # permite vários sons simultâneos
     print(f"[DEBUG] Mixer iniciado com sucesso: {pygame.mixer.get_init()}")
 except Exception as e:
     print(f"[AVISO] Falha ao inicializar mixer: {e}")
@@ -19,6 +23,7 @@ SONS_DIR = os.path.join(BASE_DIR, "assets", "sons")
 # ==============================
 # 🔊 FUNÇÕES DE SOM
 # ==============================
+
 def tocar_som(nome_arquivo, volume=1.0):
     """Toca um som curto (efeito)."""
     caminho = os.path.join(SONS_DIR, nome_arquivo)
@@ -30,14 +35,14 @@ def tocar_som(nome_arquivo, volume=1.0):
     try:
         som = pygame.mixer.Sound(caminho)
         som.set_volume(volume)
-        som.play()
+        som.play(maxtime=7000)  # evita travamento de sons longos
         print(f"[DEBUG] Tocando som: {nome_arquivo}")
     except Exception as e:
         print(f"[ERRO] Falha ao tocar som {nome_arquivo}: {e}")
 
 
 def tocar_musica_fundo(nome_arquivo, volume=0.3):
-    """Toca música de fundo em loop."""
+    """Toca música de fundo em loop (sem interferir nos efeitos)."""
     caminho = os.path.join(SONS_DIR, nome_arquivo)
 
     if not os.path.exists(caminho):
@@ -47,7 +52,7 @@ def tocar_musica_fundo(nome_arquivo, volume=0.3):
     try:
         pygame.mixer.music.load(caminho)
         pygame.mixer.music.set_volume(volume)
-        pygame.mixer.music.play(-1)  # toca em loop infinito
+        pygame.mixer.music.play(-1)
         print(f"[DEBUG] Música de fundo iniciada: {nome_arquivo}")
     except Exception as e:
         print(f"[ERRO] Falha ao tocar música de fundo ({nome_arquivo}): {e}")
@@ -61,13 +66,12 @@ def parar_musica_fundo():
     except Exception as e:
         print(f"[ERRO] Falha ao parar música de fundo: {e}")
 
-
 # ==============================
-# 🧠 FUNÇÃO DE NARRAÇÃO (IA ElevenLabs)
+# 🧠 NARRAÇÃO (IA ElevenLabs)
 # ==============================
-ELEVEN_API_KEY = "COLOQUE_SUA_CHAVE_AQUI"  # 🔑 substitua pela sua chave da ElevenLabs
-ELEVEN_VOICE_ID = "EXAVITQu4vr4xnSDxMaL"   # exemplo de voz (pode trocar depois)
 
+ELEVEN_API_KEY = "sk_2a6e05ae7c27a9d243dee5ef7d63b7fe4912cc899bf484d8"
+ELEVEN_VOICE_ID = "EXAVITQu4vr4xnSDxMaL"
 
 def narrar_texto(texto):
     """Gera e toca narração com voz da ElevenLabs sem interromper a música de fundo."""
@@ -95,9 +99,12 @@ def narrar_texto(texto):
                     f.write(resposta.content)
                 print("[DEBUG] Narração gerada com sucesso!")
 
-                # Tocar o áudio sem parar a música de fundo
+                # Tocar a narração em um canal separado
+                canal = pygame.mixer.find_channel(True)
                 som = pygame.mixer.Sound(caminho_audio)
-                som.play()
+                som.set_volume(0.9)
+                canal.play(som)
+                print("[DEBUG] Narração sendo reproduzida...")
 
             else:
                 print(f"[ERRO] Falha ao gerar voz ({resposta.status_code}): {resposta.text}")

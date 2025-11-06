@@ -3,7 +3,7 @@ from tkinter import messagebox
 import traceback
 from gui import FIFA_GUI_PLUS  # importa a interface principal
 from utils.helpers import tocar_musica_fundo, parar_musica_fundo, narrar_texto
-
+  
 
 
 class FIFA_RPG:
