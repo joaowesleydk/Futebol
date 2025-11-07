@@ -3,7 +3,7 @@
 # ===================================================================
 # Arquivo: models.py
 # Descrição: Classes que definem jogadores e adversários
-# Contém: Jogador (controlado pelo usuário) e Adversário (IA)
+# Contém: Jogador (controlado pelo usuário) e Adversário 
 # ===================================================================
 
 import random

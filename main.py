@@ -2,7 +2,7 @@
 # BATALHA DAS LENDAS RPG - ARQUIVO PRINCIPAL
 # ===================================================================
 # Desenvolvido por: João Wesley D. Kind, Cristian Andrade, Nycollas Augusto
-# Descrição: Jogo de RPG de futebol com lendas do esporte
+# Descrição: Jogo de RPG de futebol Batalha das Lendas
 # ===================================================================
 
 # Importações necessárias
@@ -14,7 +14,7 @@ from utils.helpers import tocar_musica_fundo, parar_musica_fundo, narrar_texto
 
 
 class FIFA_RPG:
-    """Classe principal do jogo FIFA RPG"""
+    """Classe principal do jogo Batalha das Lendas"""
     
     def __init__(self, root):
         """Inicializa a aplicação principal
