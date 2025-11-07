@@ -70,7 +70,7 @@ def parar_musica_fundo():
 # 🧠 NARRAÇÃO (IA ElevenLabs)
 # ==============================
 
-ELEVEN_API_KEY = "sk_2a6e05ae7c27a9d243dee5ef7d63b7fe4912cc899bf484d8"
+ELEVEN_API_KEY = "sk_c318413ae68d0c0d1f3be8be497d1004401d2e43c5ce3b19"
 ELEVEN_VOICE_ID = "EXAVITQu4vr4xnSDxMaL"
 
 def narrar_texto(texto):

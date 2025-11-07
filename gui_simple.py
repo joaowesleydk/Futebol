@@ -1,96 +1,124 @@
+# ===================================================================
+# INTERFACE GRÁFICA DO JOGO - BATALHA DAS LENDAS RPG
+# ===================================================================
+# Arquivo: gui_simple.py
+# Descrição: Interface principal do jogo com animações e batalhas
+# Recursos: Sistema de batalha, animações, sons, easter eggs
+# ===================================================================
+
+# Importações necessárias
 import tkinter as tk
 from tkinter import messagebox
 import random
-from models import Jogador
-from game_logic import Partida
-from utils.helpers import tocar_som, tocar_musica_fundo, parar_musica_fundo  # ✅ importa os sons
-from PIL import Image, ImageTk
+from models import Jogador  # Classes dos personagens
+from game_logic_simple import Partida  # Lógica de batalha
+from utils.helpers import tocar_som, tocar_musica_fundo, parar_musica_fundo  # Sistema de áudio
 import os
-
-
+from PIL import Image, ImageTk  # Para carregar e redimensionar imagens
 
 class FIFA_GUI_PLUS:
+    """Classe principal da interface gráfica do jogo"""
+    
     def __init__(self, root):
+        """Inicializa a interface do jogo
+        
+        Args:
+            root: Janela principal do Tkinter
+        """
+        # Configuração da janela
         self.root = root
         self.root.title("⚽ Batalha das Lendas RPG ⚽")
         self.root.geometry("800x600")
-        self.root.configure(bg="#0b132b")
+        self.root.configure(bg="#0b132b")  # Fundo azul escuro
 
-        # estado do jogo
-        self.partida = None
-        self.jogador = None
-        self.turno_jogador = True
+        # Variáveis de estado do jogo
+        self.partida = None  # Instância da partida atual
+        self.jogador = None  # Jogador criado
+        self.turno_jogador = True  # Controla de quem é a vez
+        
+        # Inventário inicial do jogador
         self.itens = {"⚡ Energético": 2, "🔥 Chute Especial": 1, "🛡️ Escudo": 1}
-        self.defendendo = False
-        self.nivel = 1
+        
+        # Estados de batalha
+        self.defendendo = False  # Se o jogador está defendendo
+        self.nivel = 1  # Nível atual (adversário)
+        
+        # Sistema de animações
+        self.imagens_carregadas = False  # Flag para verificar se imagens foram carregadas
+        self.imagens = {}  # Dicionário para armazenar as imagens
 
-        # cria a tela inicial (ela chamará create_fullscreen_controls)
+        # Inicia com a tela de criação de personagem
         self.tela_inicial()
 
-    # ======== Helpers de fullscreen ========
+    # ====== CONTROLES DE TELA CHEIA ======
+    
     def create_fullscreen_controls(self):
-        """
-        Garante que o window (self.root) esteja em fullscreen inicialmente
-        e cria o botão ESC / 'Sair da Tela Cheia'. Deve ser chamado após
-        cada limpeza de widgets da root, para que o botão seja recriado.
-        """
-        # remove botão anterior se existir
+        """Cria controles para gerenciar o modo tela cheia"""
         try:
+            # Remove botão anterior se existir
             if hasattr(self, "btn_sair_full") and self.btn_sair_full.winfo_exists():
                 self.btn_sair_full.destroy()
         except Exception:
             pass
 
-        # tenta ativar fullscreen (se suportado)
         try:
+            # Força modo tela cheia
             self.root.attributes("-fullscreen", True)
         except Exception:
             pass
 
-        # bind ESC para sair do fullscreen
         try:
+            # Bind da tecla ESC para sair da tela cheia
             self.root.bind("<Escape>", lambda e: self.root.attributes("-fullscreen", False))
         except Exception:
             pass
 
-        # cria o botão no canto superior direito da root
         try:
+            # Cria botão para sair da tela cheia
             self.btn_sair_full = tk.Button(
                 self.root,
                 text="⤫ Sair da Tela Cheia",
                 font=("Comic Sans MS", 12, "bold"),
-                bg="#e63946",
+                bg="#e63946",  # Vermelho
                 fg="white",
                 relief="raised",
                 bd=3,
                 command=lambda: self.root.attributes("-fullscreen", False)
             )
-            # coloca por cima de tudo — será recriado por cada tela
+            # Posiciona no canto superior direito
             self.btn_sair_full.place(relx=0.98, rely=0.02, anchor="ne")
         except Exception:
             pass
 
-    # ======== TELA INICIAL ========
+    # ====== TELA DE CRIAÇÃO DE PERSONAGEM ======
+    
     def tela_inicial(self):
+        """Tela onde o jogador digita seu nome para criar o personagem"""
+        # Limpa todos os widgets da tela
         for widget in self.root.winfo_children():
             widget.destroy()
 
+        # Frame centralizado para organizar elementos
         frame = tk.Frame(self.root, bg="#1c2541", bd=4, relief="ridge")
         frame.place(relx=0.5, rely=0.5, anchor="center", width=500, height=300)
 
+        # Título do jogo
         titulo = tk.Label(frame, text="⚽ Batalha das Lendas RPG ⚽",
                           font=("Comic Sans MS", 20, "bold"),
-                          fg="#f0a500", bg="#1c2541")
+                          fg="#f0a500", bg="#1c2541")  # Dourado sobre azul
         titulo.pack(pady=20)
 
+        # Label instrução
         lbl_nome = tk.Label(frame, text="Digite seu nome:",
                             font=("Comic Sans MS", 14),
                             fg="white", bg="#1c2541")
         lbl_nome.pack(pady=10)
 
+        # Campo de entrada do nome (suporta easter egg "flamengo")
         self.nome_entry = tk.Entry(frame, font=("Comic Sans MS", 14), justify="center")
         self.nome_entry.pack(pady=5)
 
+        # Botão para iniciar o jogo
         btn_iniciar = tk.Button(frame, text="Começar Jogo ⚡",
                                 font=("Comic Sans MS", 14, "bold"),
                                 bg="#f0a500", fg="black",
@@ -98,44 +126,55 @@ class FIFA_GUI_PLUS:
                                 command=self.iniciar_jogo)
         btn_iniciar.pack(pady=20)
 
+        # Permite iniciar com Enter
         self.root.bind("<Return>", lambda event: self.iniciar_jogo())
-
-        # importante: recria controles de fullscreen (botão + bind)
+        
+        # Configura tela cheia e inicia música de batalha
         self.create_fullscreen_controls()
         tocar_musica_fundo("tema_batalha.mp3")
 
-
-    # ======== INICIAR PARTIDA ========
     def iniciar_jogo(self):
-        tocar_som("click.mp3")
+        """Cria o jogador e inicia a primeira batalha"""
+        tocar_som("click.mp3")  # Som de clique
+        
+        # Obtém o nome digitado
         nome = self.nome_entry.get().strip()
         if not nome:
             messagebox.showwarning("Aviso", "Digite seu nome para começar!")
             return
 
-        self.jogador = Jogador(nome, energia=100, chute=10, defesa=8, precisao=70)
+        # ====== EASTER EGG: FLAMENGO ======
+        # Se o nome for "flamengo", cria um jogador super forte
+        if nome.lower() == "flamengo":
+            self.jogador = Jogador(nome, energia=200, chute=20, defesa=15, precisao=100)
+            self.jogador.easter_egg = True  # Flag para sempre tirar 20 no dado
+        else:
+            # Jogador normal
+            self.jogador = Jogador(nome, energia=100, chute=10, defesa=8, precisao=70)
+            self.jogador.easter_egg = False
+            
+        # Cria a primeira partida
         self.partida = Partida(self.jogador, nivel=self.nivel)
         self.adversario = self.partida.adversario
         self.adversario_nome = self.adversario.nome
 
+        # Inicializa variáveis de HP e energia
         self.jogador_hp = self.jogador.energia
         self.jogador_energia = self.jogador.energia
         self.adversario_hp = self.adversario.energia
         self.adversario_energia = self.adversario.energia
 
-        # ✅ Correção: HP máximo separado
+        # Armazena HP máximo para cálculos de barra
         self.jogador_hp_max = self.jogador_hp
         self.adversario_hp_max = self.adversario_hp
 
+        # Vai para a tela de batalha
         self.tela_jogo()
 
-    # ======== INICIAR PRÓXIMO NÍVEL ========
     def iniciar_proximo_nivel(self):
-        # mantém energia máxima e aumenta um pouco
         self.jogador.energia_max = getattr(self.jogador, "energia_max", self.jogador.energia) + 5
         self.jogador.energia = self.jogador.energia_max
 
-        # cria nova partida e novo adversário
         self.partida = Partida(self.jogador, nivel=self.nivel)
         self.adversario = self.partida.adversario
         self.adversario_nome = self.adversario.nome
@@ -145,17 +184,14 @@ class FIFA_GUI_PLUS:
         self.jogador_hp = self.jogador.energia
         self.jogador_energia = self.jogador.energia
 
-        # HP máximo separado
         self.jogador_hp_max = self.jogador_hp
         self.adversario_hp_max = self.adversario_hp
 
-        # ✅ Correção para evitar travamento de botões nas próximas fases
         self.turno_jogador = True
         self.defendendo = False
 
         self.tela_jogo()
 
-        # Garante que os botões voltem ativos ao iniciar nova fase
         try:
             self.btn_chutar.config(state="normal")
             self.btn_defender.config(state="normal")
@@ -163,7 +199,6 @@ class FIFA_GUI_PLUS:
         except:
             pass
 
-    # ======== TELA DO JOGO ========
     def tela_jogo(self):
         for widget in self.root.winfo_children():
             widget.destroy()
@@ -171,7 +206,6 @@ class FIFA_GUI_PLUS:
         self.frame_jogo = tk.Frame(self.root, bg="#0b132b")
         self.frame_jogo.pack(fill="both", expand=True)
 
-        # Botão de sair (fecha completamente o jogo)
         btn_sair = tk.Button(
             self.frame_jogo,
             text="🚪 Sair do Jogo",
@@ -195,6 +229,10 @@ class FIFA_GUI_PLUS:
                                    bg="#0b132b", fg="white")
         self.label_dado.pack(pady=20)
 
+        # Canvas para animação
+        self.canvas_animacao = tk.Canvas(self.frame_jogo, width=800, height=300, bg="#0b132b", highlightthickness=0)
+        self.canvas_animacao.pack(pady=5)
+
         frame_botoes = tk.Frame(self.frame_jogo, bg="#0b132b")
         frame_botoes.pack(pady=20)
 
@@ -211,22 +249,139 @@ class FIFA_GUI_PLUS:
         self.btn_item = tk.Button(frame_botoes, text="🎒 Itens", font=("Comic Sans MS", 14, "bold"),
                           bg="#f0a500", fg="black", width=12,
                           command=self.abrir_inventario)
-
         self.btn_item.grid(row=0, column=2, padx=15)
 
         self.lbl_status.config(text=f"⚽ Sua vez! Enfrente {self.adversario_nome}.")
         self.atualizar_interface()
-        
-        
-                    # =======================
-        # 🏟️ CENA DO CAMPO
-        # =======================
-               
-
-        # importante: recria controles de fullscreen (botão + bind) após montar tela_jogo
         self.create_fullscreen_controls()
+        self.carregar_imagens()
+        self.iniciar_animacao_idle()
+
+    # ====== SISTEMA DE ANIMAÇÕES ======
+    
+    def carregar_imagens(self):
+        """Carrega todas as imagens necessárias para as animações"""
+        try:
+            # Caminho base para a pasta assets
+            base_path = os.path.join(os.path.dirname(__file__), "assets")
+            
+            # Carrega imagens principais redimensionadas
+            self.imagens['jogador'] = ImageTk.PhotoImage(
+                Image.open(os.path.join(base_path, "animacoes", "jogador.png")).resize((80, 80))
+            )
+            self.imagens['bola'] = ImageTk.PhotoImage(
+                Image.open(os.path.join(base_path, "animacoes", "bola.png")).resize((30, 30))
+            )
+            # Imagem do campo/gol como fundo da animação
+            self.imagens['gol'] = ImageTk.PhotoImage(
+                Image.open(os.path.join(base_path, "imagens", "gol.png")).resize((800, 300))
+            )
+            
+            # Frames da animação de chute (3 frames)
+            self.imagens['chute1'] = ImageTk.PhotoImage(
+                Image.open(os.path.join(base_path, "animacoes", "chute", "frame1.png")).resize((80, 80))
+            )
+            self.imagens['chute2'] = ImageTk.PhotoImage(
+                Image.open(os.path.join(base_path, "animacoes", "chute", "comp1.png")).resize((80, 80))
+            )
+            self.imagens['chute3'] = ImageTk.PhotoImage(
+                Image.open(os.path.join(base_path, "animacoes", "chute", "comp3.png")).resize((80, 80))
+            )
+            
+            # Marca que as imagens foram carregadas com sucesso
+            self.imagens_carregadas = True
+            
+        except Exception as e:
+            print(f"Erro ao carregar imagens: {e}")
+            self.imagens_carregadas = False
+
+    def iniciar_animacao_idle(self):
+        if not self.imagens_carregadas:
+            return
         
+        self.canvas_animacao.delete("all")
+        # Campo de fundo
+        self.canvas_animacao.create_image(400, 150, image=self.imagens['gol'], tags="campo")
+        # Jogador centralizado no campo
+        self.canvas_animacao.create_image(400, 250, image=self.imagens['jogador'], tags="jogador")
+        # Bola no pé do jogador
+        self.canvas_animacao.create_image(430, 250, image=self.imagens['bola'], tags="bola")
+
+    def animar_chute(self, resultado_dado):
+        """Animação do chute baseada no resultado do dado
         
+        Args:
+            resultado_dado: Resultado do dado D20 (1-20)
+        """
+        if not self.imagens_carregadas:
+            return  # Não anima se as imagens não carregaram
+            
+        def frame1():
+            """Primeiro frame: jogador se preparando para chutar"""
+            self.canvas_animacao.delete("all")
+            # Desenha campo, jogador preparando e bola no pé
+            self.canvas_animacao.create_image(400, 150, image=self.imagens['gol'], tags="campo")
+            self.canvas_animacao.create_image(400, 250, image=self.imagens['chute1'], tags="jogador")
+            self.canvas_animacao.create_image(430, 250, image=self.imagens['bola'], tags="bola")
+            self.root.after(200, frame2)  # Próximo frame em 200ms
+            
+        def frame2():
+            """Segundo frame: jogador no meio do chute"""
+            self.canvas_animacao.delete("all")
+            # Bola começa a se mover
+            self.canvas_animacao.create_image(400, 150, image=self.imagens['gol'], tags="campo")
+            self.canvas_animacao.create_image(400, 250, image=self.imagens['chute2'], tags="jogador")
+            self.canvas_animacao.create_image(460, 200, image=self.imagens['bola'], tags="bola")
+            self.root.after(200, frame3)
+            
+        def frame3():
+            """Terceiro frame: jogador termina o chute, bola voa"""
+            self.canvas_animacao.delete("all")
+            self.canvas_animacao.create_image(400, 150, image=self.imagens['gol'], tags="campo")
+            self.canvas_animacao.create_image(400, 250, image=self.imagens['chute3'], tags="jogador")
+            
+            # ====== DIREÇÃO DA BOLA BASEADA NO RESULTADO DO DADO ======
+            if resultado_dado == 20:
+                # Dado 20: Golaço no ângulo superior direito
+                self.canvas_animacao.create_image(470, 80, image=self.imagens['bola'], tags="bola")
+            elif resultado_dado >= 15:
+                # Dado 15-19: Chute no ângulo
+                self.canvas_animacao.create_image(440, 100, image=self.imagens['bola'], tags="bola")
+            elif resultado_dado >= 10:
+                # Dado 10-14: Gol comum no centro
+                self.canvas_animacao.create_image(400, 120, image=self.imagens['bola'], tags="bola")
+            elif resultado_dado >= 5:
+                # Dado 5-9: Chute fraco na parte baixa
+                self.canvas_animacao.create_image(370, 140, image=self.imagens['bola'], tags="bola")
+            else:
+                # Dado 1-4: Errou - bola vai para fora (acima do gol)
+                self.canvas_animacao.create_image(400, 30, image=self.imagens['bola'], tags="bola")
+                
+            self.root.after(300, final)  # Frame final em 300ms
+            
+        def final():
+            """Frame final: mostra resultado final por 1 segundo"""
+            self.canvas_animacao.delete("all")
+            self.canvas_animacao.create_image(400, 150, image=self.imagens['gol'], tags="campo")
+            self.canvas_animacao.create_image(400, 250, image=self.imagens['jogador'], tags="jogador")
+            
+            # Posição final da bola (mesmo cálculo do frame3)
+            if resultado_dado == 20:
+                self.canvas_animacao.create_image(470, 80, image=self.imagens['bola'], tags="bola")
+            elif resultado_dado >= 15:
+                self.canvas_animacao.create_image(440, 100, image=self.imagens['bola'], tags="bola")
+            elif resultado_dado >= 10:
+                self.canvas_animacao.create_image(400, 120, image=self.imagens['bola'], tags="bola")
+            elif resultado_dado >= 5:
+                self.canvas_animacao.create_image(370, 140, image=self.imagens['bola'], tags="bola")
+            else:
+                self.canvas_animacao.create_image(400, 30, image=self.imagens['bola'], tags="bola")
+                
+            # Volta para animação idle após 1 segundo
+            self.root.after(1000, self.iniciar_animacao_idle)
+            
+        frame1()  # Inicia a animação
+
     def abrir_inventario(self):
         inv = tk.Toplevel(self.root)
         inv.title("🎒 Mochila")
@@ -295,11 +450,11 @@ class FIFA_GUI_PLUS:
             janela_inv.destroy()
 
         self.root.after(1500, self.turno_adversario)
-        
-        
+
     def sortear_drop(self):
         chance_drop = random.random()
-        if chance_drop <= 0.6:  # 60% de chance de dropar algo
+        if chance_drop <= 0.6:
+            tocar_som("item.mp3")
             raridade = random.random()
             if raridade <= 0.7:
                 item, tipo, cor = "⚡ Energético", "comum", "#ffcc00"
@@ -331,7 +486,6 @@ class FIFA_GUI_PLUS:
             messagebox.showinfo("🎁 Recompensa!", "Nenhum item foi encontrado desta vez...")
             self.animar_subida_nivel()
 
-    # ======== BARRAS ========
     def criar_barras(self):
         frame_jogador = tk.Frame(self.frame_jogo, bg="#0b132b")
         frame_jogador.pack(pady=(0, 10))
@@ -375,23 +529,38 @@ class FIFA_GUI_PLUS:
         self.canvas_energy_adversario.grid(row=0, column=1)
         self.barra_energy_adversario = self.canvas_energy_adversario.create_rectangle(0, 0, 240, 6, fill="#0099ff")
 
-    # ======== (restante do código – ações, rolagem, lógica, vitória etc.) ========
     def animar_barra_energia(self, canvas, barra, cor="#0099ff"):
         def brilho():
             canvas.itemconfig(barra, fill="#66ccff")
             canvas.after(150, lambda: canvas.itemconfig(barra, fill=cor))
         brilho()
 
+    # ====== SISTEMA DE DADOS ======
+    
     def rolar_dado(self, callback):
-        resultado_final = random.randint(1, 20)
+        """Rola um dado D20 com animação visual
+        
+        Args:
+            callback: Função a ser chamada com o resultado do dado
+        """
+        # ====== EASTER EGG: FLAMENGO SEMPRE TIRA 20 ======
+        if hasattr(self.jogador, 'easter_egg') and self.jogador.easter_egg:
+            resultado_final = 20  # Flamengo sempre tira crítico!
+        else:
+            resultado_final = random.randint(1, 20)  # Dado normal
+            
         def animar(cont=0):
-            if cont < 15:
+            """Animação do dado rolando"""
+            if cont < 15:  # 15 frames de animação
+                # Mostra números aleatórios durante a animação
                 self.label_dado.config(text=f"🎲 {random.randint(1,20)}")
-                self.root.after(60, animar, cont + 1)
+                self.root.after(60, animar, cont + 1)  # Próximo frame em 60ms
             else:
+                # Mostra o resultado final
                 self.label_dado.config(text=f"🎲 {resultado_final}")
-                callback(resultado_final)
-        animar()
+                callback(resultado_final)  # Chama a função com o resultado
+                
+        animar()  # Inicia a animação
 
     def jogar_turno(self, acao):
         if not self.turno_jogador:
@@ -405,6 +574,7 @@ class FIFA_GUI_PLUS:
         self.defendendo = False
 
         if acao == "chutar":
+            tocar_som("chute.mp3")
             self.jogador_energia = max(0, self.jogador_energia - 10)
             dano = 0
 
@@ -426,33 +596,19 @@ class FIFA_GUI_PLUS:
 
             self.adversario_hp = max(self.adversario_hp - dano, 0)
             self.lbl_status.config(text=f"{msg} (D20: {dado})")
+            
+            # Animação baseada no resultado
+            self.animar_chute(dado)
 
-            # ==============================
-            # ⚽ ANIMAÇÃO DO CHUTE
-            # ==============================
-            acertou = dano > 0  # se causou dano, consideramos que acertou o gol
-
-            # desativa os botões durante a animação
-            for btn in [self.btn_chutar, self.btn_defender, self.btn_item]:
-                btn.config(state="disabled")
-
-            # callback após a animação
-            def apos_animacao():
-                self.atualizar_interface()
-                if not self.verificar_vitoria():
-                    self.root.after(500, self.turno_adversario)
-                # reativa os botões
-                for btn in [self.btn_chutar, self.btn_defender, self.btn_item]:
-                    btn.config(state="normal")
-
-            # chama a animação com callback
-            self.animar_chute_com_callback(acertou, apos_animacao)
+            self.atualizar_interface()
+            if not self.verificar_vitoria():
+                self.root.after(500, self.turno_adversario)
 
         elif acao == "defender":
+            tocar_som("defesa.mp3")
             self.defendendo = True
             self.lbl_status.config(text="🛡️ Você se prepara para defender o próximo ataque!")
             self.root.after(1500, self.turno_adversario)
-
 
     def turno_adversario(self):
         self.lbl_status.config(text="🤖 O adversário está atacando...")
@@ -473,11 +629,14 @@ class FIFA_GUI_PLUS:
             msg = "😅 A bola desviou e entrou devagarzinho..."
             dano = 8
         else:
-            msg = "🙅‍♂️ Você defendeu o chute!"
+            msg = "🙅♂️ Você defendeu o chute!"
+            tocar_som("defesa.mp3")
             dano = 0
+        
         if self.defendendo:
             dano = int(dano * 0.5)
             msg += " 🛡️ Defesa eficaz!"
+            tocar_som("defesa.mp3")
 
         self.adversario_energia = max(0, self.adversario_energia - 10)
         self.jogador_hp = max(self.jogador_hp - dano, 0)
@@ -495,7 +654,6 @@ class FIFA_GUI_PLUS:
             btn.config(state="normal")
         self.lbl_status.config(text="⚽ Sua vez!")
 
-    # ======== VITÓRIA / DERROTA ========
     def verificar_vitoria(self):
         if self.adversario_hp <= 0:
             self.encerrar_partida(derrota=False)
@@ -528,10 +686,12 @@ class FIFA_GUI_PLUS:
             self.nivel = 1
             self.tela_inicial()
         else:
-             self.sortear_drop()
+            # Verifica se derrotou o Pelé (boss final)
+            if self.nivel == 6 and self.adversario_nome == "Pelé":
+                self.tela_vitoria_final()
+            else:
+                self.sortear_drop()
 
-
-    # ======== ANIMAÇÃO DE SUBIDA DE NÍVEL ========
     def animar_subida_nivel(self):
         for widget in self.root.winfo_children():
             widget.destroy()
@@ -553,96 +713,59 @@ class FIFA_GUI_PLUS:
                 self.iniciar_proximo_nivel()
 
         piscar()
-
-        # recria controles de fullscreen também aqui após limpar tudo
         self.create_fullscreen_controls()
+
+    # ====== TELA DE VITÓRIA FINAL ======
+    
+    def tela_vitoria_final(self):
+        """Tela especial exibida quando o jogador derrota o Pelé (boss final)"""
+        # Limpa toda a tela
+        for widget in self.root.winfo_children():
+            widget.destroy()
+
+        # Frame principal da tela de vitória
+        frame_vitoria = tk.Frame(self.root, bg="#0b132b")
+        frame_vitoria.pack(fill="both", expand=True)
+
+        # Título de parabéns em dourado
+        titulo = tk.Label(frame_vitoria, text="🏆 PARABÉNS! 🏆",
+                         font=("Comic Sans MS", 36, "bold"),
+                         fg="#f0a500", bg="#0b132b")  # Dourado
+        titulo.pack(pady=30)
+
+        # Mensagem principal da vitória
+        mensagem = tk.Label(frame_vitoria, 
+                           text="Você derrotou o lendário Pelé!\n\nO futebol foi restaurado!\n\nVocê é o novo Campeão Supremo!",
+                           font=("Comic Sans MS", 24),
+                           fg="white", bg="#0b132b",
+                           justify="center")
+        mensagem.pack(pady=20)
+
+        # Troféu gigante (emoji)
+        trofeu = tk.Label(frame_vitoria, text="🏆",
+                         font=("Arial", 120),  # Tamanho gigante
+                         bg="#0b132b")
+        trofeu.pack(pady=30)
+
+        # Botão para jogar novamente (reiniciar do nível 1)
+        btn_novo_jogo = tk.Button(frame_vitoria, text="🎆 Jogar Novamente",
+                                 font=("Comic Sans MS", 18, "bold"),
+                                 bg="#f0a500", fg="black",
+                                 relief="raised", bd=4,
+                                 width=20,
+                                 command=self.reiniciar_jogo)
+        btn_novo_jogo.pack(pady=20)
+
+        # Toca som de vitória épica
+        tocar_som("vitoria.mp3")
         
-        
-        # ======== FUNÇÃO DE ANIMAÇÃO (ADICIONE ANTES DO if __name__ == "__main__") ========
+        # Mantém controles de tela cheia
+        self.create_fullscreen_controls()
 
-
-def animar_acao_tk(container, pasta, duracao=2000, intervalo=150, som=None):
-    """
-    Mostra animação simples (sequência de imagens) na parte inferior da tela, sobre o gol.
-    - pasta: caminho da pasta com os frames (frame1.png, frame2.png, ...)
-    - som: arquivo de som opcional
-    """
-    try:
-        frames = []
-        for nome in sorted(os.listdir(pasta)):
-            if nome.endswith(".png"):
-                caminho = os.path.join(pasta, nome)
-                img = Image.open(caminho).resize((280, 280))
-                frames.append(ImageTk.PhotoImage(img))
-
-        if not frames:
-            print(f"[AVISO] Nenhum frame encontrado em {pasta}")
-            return
-
-        # Toca som (opcional)
-        if som:
-            try:
-                from utils.helpers import tocar_som
-                tocar_som(som)
-            except Exception as e:
-                print(f"[ERRO ao tocar som]: {e}")
-
-        # label da animação — posição ajustada para ficar acima do gol fixo
-        label_anim = tk.Label(container, bg="#0b132b")
-        label_anim.place(relx=0.5, rely=0.72, anchor="center")
-
-        def atualizar(ind=0):
-            if ind < len(frames):
-                label_anim.configure(image=frames[ind])
-                container.after(intervalo, lambda: atualizar(ind + 1))
-            else:
-                label_anim.destroy()
-
-        atualizar()
-    except Exception as e:
-        print(f"[ERRO na animação]: {e}")
-        
-        
-def animar_chute_simples(container, acertou=True):
-    """
-    Anima a bola saindo do jogador e indo até o gol.
-    """
-    try:
-        from utils.helpers import tocar_som
-        caminho_bola = os.path.join("assets", "imagens", "bola.png")
-        if not os.path.exists(caminho_bola):
-            print("[AVISO] bola.png não encontrada")
-            return
-
-        bola_img = Image.open(caminho_bola).resize((40, 40))
-        bola_tk = ImageTk.PhotoImage(bola_img)
-        label_bola = tk.Label(container, image=bola_tk, bg="#0b132b")
-        label_bola.image = bola_tk
-        label_bola.place(relx=0.33, rely=0.78, anchor="center")  # perto do pé do jogador
-
-        tocar_som("chute.mp3")
-
-        # Movimento da bola
-        def mover_bola(x=0.33, y=0.78):
-            if x < 0.70:
-                x += 0.025
-                if not acertou:
-                    y -= 0.01
-                label_bola.place(relx=x, rely=y, anchor="center")
-                container.after(30, lambda: mover_bola(x, y))
-            else:
-                label_bola.destroy()
-                if acertou:
-                    tocar_som("chute_gol.mp3")
-                else:
-                    tocar_som("erro.mp3")
-
-        mover_bola()
-
-    except Exception as e:
-        print(f"[ERRO na animação de chute]: {e}")
-        
-
+    def reiniciar_jogo(self):
+        """Reinicia o jogo do nível 1"""
+        self.nivel = 1  # Volta para o primeiro nível
+        self.tela_inicial()  # Volta para a tela de criação de personagem
 
 if __name__ == "__main__":
     root = tk.Tk()

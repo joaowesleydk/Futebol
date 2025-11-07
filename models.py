@@ -1,14 +1,33 @@
+# ===================================================================
+# MODELOS DE PERSONAGENS - BATALHA DAS LENDAS RPG
+# ===================================================================
+# Arquivo: models.py
+# Descrição: Classes que definem jogadores e adversários
+# Contém: Jogador (controlado pelo usuário) e Adversário (IA)
+# ===================================================================
+
 import random
 
 class Jogador:
+    """Classe que representa o jogador controlado pelo usuário"""
+    
     def __init__(self, nome: str, energia: int, chute: int, defesa: int, precisao: int):
+        """Inicializa um jogador
+        
+        Args:
+            nome: Nome do jogador
+            energia: Pontos de vida/energia
+            chute: Força de ataque
+            defesa: Capacidade defensiva
+            precisao: Chance de acerto (0-100)
+        """
         self.nome = nome
-        self.energia = energia
-        self.energia_max = energia
-        self.chute = chute
-        self.defesa = defesa
-        self.precisao = precisao
-        self.gols = 0
+        self.energia = energia  # HP atual
+        self.energia_max = energia  # HP máximo
+        self.chute = chute  # Poder de ataque
+        self.defesa = defesa  # Poder defensivo
+        self.precisao = precisao  # Precisão (porcentagem)
+        self.gols = 0  # Contador de gols marcados
 
     def chutar(self, adversario):
         """Tenta fazer um gol no adversário."""
